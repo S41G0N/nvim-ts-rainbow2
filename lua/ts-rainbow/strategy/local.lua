@@ -163,13 +163,14 @@ local function local_rainbow(bufnr, parser)
 	end)
 end
 
----Sets up all the callbacks and performs an initial highlighting
+--- Sets up all the callbacks and performs an initial highlighting
 local function setup_parser(bufnr, parser)
-	parser:for_each_child(function(p, lang)
+	for _, child in ipairs(parser:children()) do
+		local lang = child:lang()
 		-- Skip languages which are not supported, otherwise we get a
 		-- nil-reference error
 		if not lib.get_query(lang) then return end
-		p:register_cbs {
+		child:register_cbs {
 			on_changedtree = function(_changes, tree)
 				-- HACK: As of Neovim v0.9.1 there is no way of unregistering a
 				-- callback, so we use this check to abort
@@ -180,7 +181,7 @@ local function setup_parser(bufnr, parser)
 				-- but this doesn't work, so we will rebuild the entire tree
 				-- instead.
 				local fake_changes = {
-					{tree:root():range()}
+						{tree:root():range()}
 				}
 				match_trees[bufnr][lang] = build_match_tree(bufnr, fake_changes, tree, lang)
 				-- Re-highlight after the change
@@ -192,7 +193,7 @@ local function setup_parser(bufnr, parser)
 				setup_parser(bufnr, child)
 			end,
 		}
-	end, true)
+	end
 end
 
 function M.on_attach(bufnr, settings)
@@ -204,22 +205,24 @@ function M.on_attach(bufnr, settings)
 		buffer = bufnr,
 		callback = function(args)
 			lib.clear_namespace(bufnr, parser:lang())
-			parser:for_each_child(function(_, lang)
+			for _, child in ipairs(parser:children()) do
+				local lang = child:lang()
 				lib.clear_namespace(bufnr, lang)
-			end)
+			end
 			local_rainbow(args.buf, parser)
 		end
 	})
 
 	-- Build up the initial match tree
 	match_trees[bufnr] = {}
-	parser:for_each_tree(function(tree, sub_parser)
+	for _, tree in ipairs(parser:trees()) do
+		local sub_parser = tree:parser()
 		local sub_lang = sub_parser:lang()
 		local changes = {
 			{tree:root():range()}
 		}
 		match_trees[bufnr][sub_lang] = build_match_tree(bufnr, changes, tree, sub_lang)
-	end)
+	end
 	local_rainbow(bufnr, parser)
 end
 

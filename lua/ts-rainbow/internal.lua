@@ -92,9 +92,10 @@ function M.detach(bufnr)
 	local parser = lib.buffers[bufnr].parser
 
 	-- Clear all the namespaces for each language
-	parser:for_each_child(function(_, lang)
+	for _, child in ipairs(parser:children()) do
+		local lang = child:lang()
 		lib.clear_namespace(bufnr, lang)
-	end, true)
+	end
 	-- Finally release all resources the parser is holding on to
 	parser:destroy()
 

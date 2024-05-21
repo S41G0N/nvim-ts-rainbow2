@@ -93,13 +93,14 @@ local function full_update(bufnr, parser)
 	parser:for_each_tree(callback)
 end
 
----Sets up all the callbacks and performs an initial highlighting
+-- Sets up all the callbacks and performs an initial highlighting
 local function setup_parser(bufnr, parser)
-	parser:for_each_child(function(p, lang)
+	for _, child in ipairs(parser:children()) do
+		local lang = child:lang()
 		-- Skip languages which are not supported, otherwise we get a
 		-- nil-reference error
 		if not lib.get_query(lang) then return end
-		p:register_cbs {
+		child:register_cbs {
 			on_changedtree = function(changes, tree)
 				-- HACK: As of Neovim v0.9.1 there is no way of unregistering a
 				-- callback, so we use this check to abort
@@ -124,11 +125,9 @@ local function setup_parser(bufnr, parser)
 				setup_parser(bufnr, child)
 			end,
 		}
-	end, true)
-
+	end
 	full_update(bufnr, parser)
 end
-
 
 function M.on_attach(bufnr, settings)
 	local parser = settings.parser
